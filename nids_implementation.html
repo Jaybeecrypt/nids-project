@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cloud-Based Hybrid NIDS | BU22CSC1118</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  /* ═══════════════════════════════════════════
+     DESIGN TOKENS
+  ═══════════════════════════════════════════ */
+  :root {
+    --bg:       #050a0f;
+    --surface:  #0a1520;
+    --surface2: #0f1e2e;
+    --border:   #1a3a55;
+    --accent:   #00d4ff;
+    --accent2:  #00ff9d;
+    --accent3:  #ff6b35;
+    --warn:     #ffd166;
+    --danger:   #ff4757;
+    --text:     #c8dde8;
+    --text-dim: #5a8a9f;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Exo 2', sans-serif;
+    --body: 'Rajdhani', sans-serif;
+  }
+
+  /* ═══════════════════════════════════════════
+     RESET & BASE
+  ═══════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ═══════════════════════════════════════════
+     LAYOUT WRAPPER
+  ═══════════════════════════════════════════ */
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ═══════════════════════════════════════════
+     HEADER
+  ═══════════════════════════════════════════ */
+  .header {
+    padding: 44px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 10px;
+  }
+  .logo-box {
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    flex-shrink: 0;
+    animation: pulse-logo 3s ease-in-out infinite;
+  }
+  .logo-box span {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: #000;
+    font-weight: 700;
+  }
+  @keyframes pulse-logo {
+    0%,100% { filter: drop-shadow(0 0 8px  rgba(0,212,255,0.5)); }
+    50%      { filter: drop-shadow(0 0 22px rgba(0,255,157,0.8)); }
+  }
+
+  h1 {
+    font-family: var(--head);
+    font-size: clamp(22px, 4vw, 38px);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    margin-top: 4px;
+  }
+  .meta-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .pill.green { border-color: var(--accent2); color: var(--accent2); }
+  .pill.blue  { border-color: var(--accent);  color: var(--accent);  }
+
+  /* ═══════════════════════════════════════════
+     SECTION LABELS
+  ═══════════════════════════════════════════ */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ═══════════════════════════════════════════
+     CARD BASE
+  ═══════════════════════════════════════════ */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    margin-bottom: 28px;
+  }
+
+  /* ═══════════════════════════════════════════
+     SECTION 01 — PIPELINE
+  ═══════════════════════════════════════════ */
+  .pipeline-stages {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .stage {
+    flex: 1;
+    min-width: 115px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: default;
+  }
+  .stage-box {
+    width: 100%;
+    padding: 14px 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    border-radius: 4px;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage-box::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--stage-color, var(--accent)), transparent);
+  }
+  .stage:hover .stage-box {
+    border-color: var(--stage-color, var(--accent));
+    transform: translateY(-3px);
+  }
+  .stage-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .stage-icon { font-size: 24px; margin-bottom: 4px; }
+  .stage-name {
+    font-family: var(--head);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .stage-stat {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    color: var(--text-dim);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════
+     SECTION 02 — METRICS
+  ═══════════════════════════════════════════ */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--mc, var(--accent)); }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--mc, var(--accent));
+  }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-family: var(--head);
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--mc, var(--accent));
+    line-height: 1;
+  }
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 5px;
+  }
+
+  /* ═══════════════════════════════════════════
+     SECTION 03 — CLASSIFIER DEMO
+  ═══════════════════════════════════════════ */
+  .demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+
+  /* Scenario buttons */
+  .scenario-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .scen-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    padding: 5px 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .scen-btn:hover,
+  .scen-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.07);
+  }
+
+  /* Feature sliders */
+  .feature-group { margin-bottom: 16px; }
+  .feature-group h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .feature-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
+  .feature-row label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    width: 150px;
+    flex-shrink: 0;
+  }
+  .feature-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .feature-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .feature-row input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+  .feature-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Classify button */
+  .classify-btn {
+    width: 100%;
+    font-family: var(--head);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,255,157,0.1));
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .classify-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .classify-btn span { position: relative; z-index: 1; }
+  .classify-btn:hover { box-shadow: 0 0 28px rgba(0,212,255,0.35); }
+  .classify-btn:hover::before { opacity: 0.12; }
+  .classify-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Result display */
+  .result-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .result-display {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 22px;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+  }
+  .result-status {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+  .result-verdict {
+    font-family: var(--head);
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .result-verdict.benign  { color: var(--accent2); }
+  .result-verdict.attack  { color: var(--danger); }
+  .result-verdict.loading {
+    color: var(--text-dim);
+    animation: blink 0.9s step-end infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.25; }
+  }
+
+  /* Confidence bar */
+  .conf-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+  .conf-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .conf-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Top class probabilities */
+  .top-probs { display: flex; flex-direction: column; gap: 7px; }
+  .top-probs-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .prob-row { display: flex; align-items: center; gap: 10px; }
+  .prob-class {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    width: 170px;
+    flex-shrink: 0;
+  }
+  .prob-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .prob-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.8s ease;
+  }
+  .prob-pct {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    width: 40px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Pipeline trace */
+  .pipeline-trace {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .trace-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .trace-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .trace-done   { background: var(--accent2); }
+  .trace-active { background: var(--accent); animation: pulse-dot 1s infinite; }
+  .trace-wait   { background: var(--border); }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* ═══════════════════════════════════════════
+     SECTION 04 — PER-CLASS TABLE
+  ═══════════════════════════════════════════ */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    color: var(--accent);
+    text-transform: uppercase;
+    padding: 9px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(26,58,85,0.5);
+  }
+  tbody tr:hover td { background: rgba(0,212,255,0.03); }
+  td.class-name { font-family: var(--body); font-size: 13px; font-weight: 600; }
+  td.num  { text-align: right; }
+  td.good { color: var(--accent2); }
+  td.med  { color: var(--warn); }
+  td.bad  { color: var(--danger); }
+
+  /* Inline bar inside table cells */
+  .bar-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .inline-bar {
+    width: 70px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .inline-fill { height: 100%; border-radius: 2px; }
+
+  /* ═══════════════════════════════════════════
+     SECTION 05 — CNN ARCHITECTURE
+  ═══════════════════════════════════════════ */
+  .arch-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .layer-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .layer-box {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: var(--surface2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .arch-grid .layer-row:last-child .layer-box {
+    border-bottom: 1px solid var(--border);
+    border-radius: 0 0 4px 4px;
+  }
+  .arch-grid .layer-row:first-child .layer-box {
+    border-radius: 4px 4px 0 0;
+  }
+  .layer-box:hover {
+    border-color: var(--accent) !important;
+    background: rgba(0,212,255,0.04);
+  }
+  .layer-name {
+    font-family: var(--head);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .layer-detail {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .layer-shape {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    text-align: right;
+  }
+  .layer-params {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    margin-top: 2px;
+  }
+  .layer-arrow {
+    text-align: center;
+    font-size: 18px;
+    color: var(--border);
+    line-height: 1;
+    padding: 2px 0;
+    margin-left: 60px;
+  }
+
+  /* ═══════════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════════ */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding-top: 22px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-right: 6px;
+    animation: pulse-dot 1.5s infinite;
+  }
+
+  /* ═══════════════════════════════════════════
+     RESPONSIVE
+  ═══════════════════════════════════════════ */
+  @media (max-width: 700px) {
+    .metrics-grid      { grid-template-columns: repeat(2, 1fr); }
+    .demo-grid         { grid-template-columns: 1fr; }
+    .pipeline-stages   { gap: 4px; }
+    .arrow             { padding: 0 2px; font-size: 14px; }
+    .stage             { min-width: 80px; }
+  }
+  @media (max-width: 480px) {
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .stage-name   { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════ -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo-box"><span>N</span></div>
+      <div>
+        <div class="subtitle">// BU22CSC1118 · BOWEN UNIVERSITY, IWO · COMPUTER SCIENCE</div>
+        <h1>Cloud-Based Hybrid NIDS</h1>
+      </div>
+    </div>
+    <div class="subtitle">SMOTE – XGBoost – CNN &nbsp;·&nbsp; CICIDS-2017 Dataset &nbsp;·&nbsp; Implementation Showcase</div>
+    <div class="meta-pills">
+      <span class="pill blue">CICIDS-2017</span>
+      <span class="pill blue">78 → 35 Features</span>
+      <span class="pill blue">15 Traffic Classes</span>
+      <span class="pill green">Accuracy: 93.06%</span>
+      <span class="pill green">F1-Score: 94.45%</span>
+      <span class="pill">149,007 Params · ~600 KB</span>
+      <span class="pill">Supervisor: Miss Busolami Oluwadamilare</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       01 — PIPELINE
+  ══════════════════════════════════════ -->
+  <div class="section-label">01 // Detection Pipeline</div>
+  <div class="card">
+    <div class="pipeline-stages">
+
+      <div class="stage">
+        <div class="stage-box" style="--stage-color:#00d4ff">
+          <div class="stage-num">PHASE 1–2</div>
+          <div class="stage-icon">🗄️</div>
+          <div class="stage-name" style="color:#00d4ff">Ingest &amp; Clean</div>
+        </div>
+        <div class="stage-stat">3,119,345 raw<br/>→ 2,520,798 clean<br/>78 features</div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="stage">
+        <div class="stage-box" style="--stage-color:#00ff9d">
+          <div class="stage-num">PHASE 3</div>
+          <div class="stage-icon">⚖️</div>
+          <div class="stage-name" style="color:#00ff9d">SMOTE</div>
+        </div>
+        <div class="stage-stat">k_neighbors=1<br/>5,000 / class cap<br/>75,000 balanced</div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="stage">
+        <div class="stage-box" style="--stage-color:#ffd166">
+          <div class="stage-num">PHASE 4</div>
+          <div class="stage-icon">🌲</div>
+          <div class="stage-name" style="color:#ffd166">XGBoost</div>
+        </div>
+        <div class="stage-stat">78 → 35 features<br/>Gain importance<br/>100 estimators</div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="stage">
+        <div class="stage-box" style="--stage-color:#ff6b35">
+          <div class="stage-num">PHASE 5–7</div>
+          <div class="stage-icon">🧠</div>
+          <div class="stage-name" style="color:#ff6b35">1D-CNN</div>
+        </div>
+        <div class="stage-stat">Stopped: epoch 21<br/>Val acc: 93.63%<br/>149,007 params</div>
+      </div>
+
+      <div class="arrow">›</div>
+
+      <div class="stage">
+        <div class="stage-box" style="--stage-color:#ff4757">
+          <div class="stage-num">PHASE 8</div>
+          <div class="stage-icon">🚨</div>
+          <div class="stage-name" style="color:#ff4757">Alert</div>
+        </div>
+        <div class="stage-stat">756,240 tested<br/>15-class output<br/>Softmax probs</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       02 — METRICS
+  ══════════════════════════════════════ -->
+  <div class="section-label">02 // Overall Performance · Test Set (756,240 Samples)</div>
+  <div class="metrics-grid">
+    <div class="metric-card" style="--mc:#00d4ff">
+      <div class="metric-label">Accuracy</div>
+      <div class="metric-value">93.06%</div>
+      <div class="metric-sub">756,240 samples</div>
+    </div>
+    <div class="metric-card" style="--mc:#00ff9d">
+      <div class="metric-label">Weighted F1-Score</div>
+      <div class="metric-value">94.45%</div>
+      <div class="metric-sub">Primary headline metric</div>
+    </div>
+    <div class="metric-card" style="--mc:#ffd166">
+      <div class="metric-label">Weighted Precision</div>
+      <div class="metric-value">96.60%</div>
+      <div class="metric-sub">Low false alarm rate</div>
+    </div>
+    <div class="metric-card" style="--mc:#ff6b35">
+      <div class="metric-label">Weighted Recall</div>
+      <div class="metric-value">93.06%</div>
+      <div class="metric-sub">Attack detection rate</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       03 — LIVE CLASSIFIER
+  ══════════════════════════════════════ -->
+  <div class="section-label">03 // Live Traffic Classifier · AI-Powered Demo</div>
+  <div class="card">
+
+    <!-- Scenario presets -->
+    <div style="margin-bottom:20px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:9px;letter-spacing:.08em;">
+        LOAD TRAFFIC SCENARIO:
+      </div>
+      <div class="scenario-btns">
+        <button class="scen-btn" onclick="loadScenario('benign',  this)">✅ Benign Traffic</button>
+        <button class="scen-btn" onclick="loadScenario('ddos',    this)">💥 DDoS Attack</button>
+        <button class="scen-btn" onclick="loadScenario('portscan',this)">🔍 Port Scan</button>
+        <button class="scen-btn" onclick="loadScenario('dosHulk', this)">⚡ DoS Hulk</button>
+        <button class="scen-btn" onclick="loadScenario('ftp',     this)">🔐 FTP-Patator</button>
+        <button class="scen-btn" onclick="loadScenario('web',     this)">🕸️ Web Attack</button>
+        <button class="scen-btn" onclick="loadScenario('ssh',     this)">🔑 SSH-Patator</button>
+        <button class="scen-btn" onclick="loadScenario('bot',     this)">🤖 Botnet</button>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+
+      <!-- Left: Feature sliders -->
+      <div class="input-col">
+
+        <div class="feature-group">
+          <h4>Flow Duration &amp; Packet Counts</h4>
+          <div class="feature-row">
+            <label>Flow Duration (μs)</label>
+            <input type="range" id="s_flow_dur" min="0" max="100" value="45"
+                   oninput="updVal(this,'v_flow_dur')"/>
+            <span class="feature-val" id="v_flow_dur">45</span>
+          </div>
+          <div class="feature-row">
+            <label>Total Fwd Packets</label>
+            <input type="range" id="s_fwd_pkts" min="0" max="100" value="30"
+                   oninput="updVal(this,'v_fwd_pkts')"/>
+            <span class="feature-val" id="v_fwd_pkts">30</span>
+          </div>
+          <div class="feature-row">
+            <label>Total Bwd Packets</label>
+            <input type="range" id="s_bwd_pkts" min="0" max="100" value="28"
+                   oninput="updVal(this,'v_bwd_pkts')"/>
+            <span class="feature-val" id="v_bwd_pkts">28</span>
+          </div>
+          <div class="feature-row">
+            <label>Packet Length Mean</label>
+            <input type="range" id="s_pkt_len" min="0" max="100" value="40"
+                   oninput="updVal(this,'v_pkt_len')"/>
+            <span class="feature-val" id="v_pkt_len">40</span>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <h4>Flow Rate &amp; Inter-Arrival Time</h4>
+          <div class="feature-row">
+            <label>Flow Bytes/s</label>
+            <input type="range" id="s_flow_bps" min="0" max="100" value="35"
+                   oninput="updVal(this,'v_flow_bps')"/>
+            <span class="feature-val" id="v_flow_bps">35</span>
+          </div>
+          <div class="feature-row">
+            <label>Flow Packets/s</label>
+            <input type="range" id="s_flow_pps" min="0" max="100" value="32"
+                   oninput="updVal(this,'v_flow_pps')"/>
+            <span class="feature-val" id="v_flow_pps">32</span>
+          </div>
+          <div class="feature-row">
+            <label>Fwd IAT Mean</label>
+            <input type="range" id="s_fwd_iat" min="0" max="100" value="50"
+                   oninput="updVal(this,'v_fwd_iat')"/>
+            <span class="feature-val" id="v_fwd_iat">50</span>
+          </div>
+          <div class="feature-row">
+            <label>Bwd IAT Mean</label>
+            <input type="range" id="s_bwd_iat" min="0" max="100" value="48"
+                   oninput="updVal(this,'v_bwd_iat')"/>
+            <span class="feature-val" id="v_bwd_iat">48</span>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <h4>TCP Flags &amp; Window</h4>
+          <div class="feature-row">
+            <label>SYN Flag Count</label>
+            <input type="range" id="s_syn" min="0" max="100" value="5"
+                   oninput="updVal(this,'v_syn')"/>
+            <span class="feature-val" id="v_syn">5</span>
+          </div>
+          <div class="feature-row">
+            <label>RST Flag Count</label>
+            <input type="range" id="s_rst" min="0" max="100" value="2"
+                   oninput="updVal(this,'v_rst')"/>
+            <span class="feature-val" id="v_rst">2</span>
+          </div>
+          <div class="feature-row">
+            <label>Avg Fwd Window</label>
+            <input type="range" id="s_win" min="0" max="100" value="55"
+                   oninput="updVal(this,'v_win')"/>
+            <span class="feature-val" id="v_win">55</span>
+          </div>
+        </div>
+
+        <button class="classify-btn" id="classifyBtn" onclick="runClassify()">
+          <span>⚡ CLASSIFY TRAFFIC FLOW</span>
+        </button>
+
+      </div><!-- /input-col -->
+
+      <!-- Right: Result display -->
+      <div class="result-col">
+        <div class="result-display" id="resultDisplay">
+          <div class="result-status">AWAITING CLASSIFICATION</div>
+          <div class="result-verdict loading">READY</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
+            Select a scenario preset or adjust the sliders manually,
+            then press <span style="color:var(--accent)">CLASSIFY</span> to run
+            the hybrid pipeline and get a real-time prediction.
+          </div>
+          <div class="pipeline-trace" style="margin-top:auto">
+            <div class="trace-line">
+              <span class="trace-dot trace-wait"></span>
+              Phase 1–2: Preprocessing + StandardScaler
+            </div>
+            <div class="trace-line">
+              <span class="trace-dot trace-wait"></span>
+              Phase 3: SMOTE balancing (k=1, 5k/class)
+            </div>
+            <div class="trace-line">
+              <span class="trace-dot trace-wait"></span>
+              Phase 4: XGBoost feature selection (78 → 35)
+            </div>
+            <div class="trace-line">
+              <span class="trace-dot trace-wait"></span>
+              Phase 5–7: CNN forward pass → Softmax
+            </div>
+            <div class="trace-line">
+              <span class="trace-dot trace-wait"></span>
+              Phase 8: Alert generation
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /demo-grid -->
+  </div><!-- /card -->
+
+  <!-- ══════════════════════════════════════
+       04 — PER-CLASS TABLE
+  ══════════════════════════════════════ -->
+  <div class="section-label">04 // Per-Class Classification Report · CICIDS-2017 Test Set</div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Traffic Class</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1-Score</th>
+            <th style="text-align:right">Support</th>
+            <th>Detection Status</th>
+          </tr>
+        </thead>
+        <tbody id="classTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       05 — CNN ARCHITECTURE
+  ══════════════════════════════════════ -->
+  <div class="section-label">05 // 1D-CNN Architecture · Layer Specification</div>
+  <div class="card">
+    <div class="arch-grid" id="archGrid"></div>
+    <div style="margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;">
+      Total trainable parameters: <span style="color:var(--accent)">149,007</span>
+      &nbsp;·&nbsp; Model size: <span style="color:var(--accent)">~600 KB</span>
+      &nbsp;·&nbsp; Lightweight for cloud deployment
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       FOOTER
+  ══════════════════════════════════════ -->
+  <div class="footer">
+    <div><span class="live-dot"></span>SYSTEM ACTIVE · CICIDS-2017 BENCHMARK DATASET</div>
+    <div>OLABODE AJIBOLA &nbsp;·&nbsp; BU22CSC1118 &nbsp;·&nbsp; BOWEN UNIVERSITY, IWO</div>
+    <div>SUPERVISOR: MISS BUSOLAMI OLUWADAMILARE &nbsp;·&nbsp; DECEMBER 2025</div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+
+/* ── 1. PER-CLASS TABLE DATA ── */
+const classData = [
+  { name:"BENIGN",                   p:1.00, r:0.92, f:0.96, sup:628518 },
+  { name:"Bot",                       p:0.04, r:1.00, f:0.08, sup:584    },
+  { name:"DDoS",                      p:0.85, r:1.00, f:0.92, sup:38404  },
+  { name:"DoS GoldenEye",             p:0.74, r:0.99, f:0.85, sup:3086   },
+  { name:"DoS Hulk",                  p:0.84, r:1.00, f:0.91, sup:51854  },
+  { name:"DoS Slowhttptest",          p:0.61, r:0.99, f:0.75, sup:1568   },
+  { name:"DoS slowloris",             p:0.61, r:0.99, f:0.75, sup:1616   },
+  { name:"FTP-Patator",               p:0.70, r:0.99, f:0.82, sup:1779   },
+  { name:"Heartbleed",                p:0.07, r:1.00, f:0.13, sup:3      },
+  { name:"Infiltration",              p:0.00, r:1.00, f:0.01, sup:11     },
+  { name:"PortScan",                  p:0.72, r:1.00, f:0.84, sup:27208  },
+  { name:"SSH-Patator",               p:0.60, r:0.94, f:0.74, sup:966    },
+  { name:"Web Attack – Brute Force",  p:0.13, r:0.13, f:0.13, sup:441    },
+  { name:"Web Attack – SQL Injection",p:0.01, r:0.50, f:0.01, sup:6      },
+  { name:"Web Attack – XSS",          p:0.04, r:0.99, f:0.07, sup:196    },
+];
+
+function colorClass(v) {
+  if (v >= 0.80) return 'good';
+  if (v >= 0.50) return 'med';
+  return 'bad';
+}
+
+function barCell(v) {
+  const pct = Math.round(v * 100);
+  const col = v >= 0.80 ? '#00ff9d' : v >= 0.50 ? '#ffd166' : '#ff4757';
+  return `<div class="bar-cell">
+    <div class="inline-bar">
+      <div class="inline-fill" style="width:${pct}%;background:${col}"></div>
+    </div>
+    <span class="${colorClass(v)}">${pct}%</span>
+  </div>`;
+}
+
+const tbody = document.getElementById('classTable');
+classData.forEach(d => {
+  const status = d.r >= 0.90
+    ? `<span style="color:var(--accent2)">✓ DETECTED</span>`
+    : d.r >= 0.50
+    ? `<span style="color:var(--warn)">⚠ PARTIAL</span>`
+    : `<span style="color:var(--danger)">✗ WEAK</span>`;
+  tbody.innerHTML += `<tr>
+    <td class="class-name">${d.name}</td>
+    <td>${barCell(d.p)}</td>
+    <td>${barCell(d.r)}</td>
+    <td>${barCell(d.f)}</td>
+    <td class="num">${d.sup.toLocaleString()}</td>
+    <td>${status}</td>
+  </tr>`;
+});
+
+/* ── 2. CNN ARCHITECTURE TABLE ── */
+const layers = [
+  { name:"Input Layer",        detail:"Shape: (35, 1) — 35 selected features, 1 channel",  shape:"(None, 35, 1)",  params:"0"       },
+  { name:"Conv1D — Layer 1",   detail:"Filters: 64 · Kernel: 3 · ReLU · Xavier/Glorot",     shape:"(None, 33, 64)", params:"256"     },
+  { name:"MaxPooling1D — 1",   detail:"Pool size: 2 · Stride: 2",                            shape:"(None, 16, 64)", params:"0"       },
+  { name:"Conv1D — Layer 2",   detail:"Filters: 128 · Kernel: 3 · ReLU",                     shape:"(None, 14, 128)","params":"24,704"},
+  { name:"MaxPooling1D — 2",   detail:"Pool size: 2 · Stride: 2",                            shape:"(None, 7, 128)", params:"0"       },
+  { name:"Flatten",            detail:"7 × 128 = 896 units",                                 shape:"(None, 896)",    params:"0"       },
+  { name:"Dense — Layer 1",    detail:"Units: 128 · ReLU",                                   shape:"(None, 128)",    params:"114,816" },
+  { name:"Dropout",            detail:"Rate: 0.5 — active during training only",             shape:"(None, 128)",    params:"0"       },
+  { name:"Dense — Layer 2",    detail:"Units: 64 · ReLU",                                    shape:"(None, 64)",     params:"8,256"   },
+  { name:"Output (Dense)",     detail:"Units: 15 · Softmax — probability per class",         shape:"(None, 15)",     params:"975"     },
+];
+
+const archGrid = document.getElementById('archGrid');
+layers.forEach((l, i) => {
+  if (i > 0) {
+    const arr = document.createElement('div');
+    arr.className = 'layer-arrow';
+    arr.textContent = '↓';
+    archGrid.appendChild(arr);
+  }
+  const row = document.createElement('div');
+  row.className = 'layer-row';
+  row.innerHTML = `<div class="layer-box">
+    <div>
+      <div class="layer-name">${l.name}</div>
+      <div class="layer-detail">${l.detail}</div>
+    </div>
+    <div>
+      <div class="layer-shape">${l.shape}</div>
+      <div class="layer-params">${l.params} params</div>
+    </div>
+  </div>`;
+  archGrid.appendChild(row);
+});
+
+/* ── 3. SLIDER UTILITY ── */
+function updVal(el, vid) {
+  document.getElementById(vid).textContent = el.value;
+}
+
+/* ── 4. SCENARIO PRESETS ── */
+const scenarios = {
+  benign:   { flow_dur:45, fwd_pkts:30, bwd_pkts:28, pkt_len:40, flow_bps:35, flow_pps:32, fwd_iat:50, bwd_iat:48, syn:5,  rst:2,  win:55 },
+  ddos:     { flow_dur:6,  fwd_pkts:97, bwd_pkts:1,  pkt_len:10, flow_bps:99, flow_pps:98, fwd_iat:1,  bwd_iat:0,  syn:95, rst:4,  win:8  },
+  portscan: { flow_dur:2,  fwd_pkts:2,  bwd_pkts:0,  pkt_len:5,  flow_bps:12, flow_pps:90, fwd_iat:1,  bwd_iat:0,  syn:85, rst:72, win:4  },
+  dosHulk:  { flow_dur:4,  fwd_pkts:90, bwd_pkts:88, pkt_len:82, flow_bps:92, flow_pps:88, fwd_iat:2,  bwd_iat:2,  syn:8,  rst:2,  win:12 },
+  ftp:      { flow_dur:62, fwd_pkts:48, bwd_pkts:47, pkt_len:33, flow_bps:18, flow_pps:16, fwd_iat:62, bwd_iat:62, syn:3,  rst:1,  win:66 },
+  web:      { flow_dur:57, fwd_pkts:11, bwd_pkts:9,  pkt_len:58, flow_bps:22, flow_pps:9,  fwd_iat:48, bwd_iat:44, syn:2,  rst:0,  win:72 },
+  ssh:      { flow_dur:70, fwd_pkts:55, bwd_pkts:54, pkt_len:45, flow_bps:14, flow_pps:12, fwd_iat:70, bwd_iat:70, syn:4,  rst:1,  win:60 },
+  bot:      { flow_dur:80, fwd_pkts:20, bwd_pkts:15, pkt_len:60, flow_bps:10, flow_pps:8,  fwd_iat:80, bwd_iat:75, syn:6,  rst:3,  win:50 },
+};
+
+const sliderIds = {
+  flow_dur:"s_flow_dur", fwd_pkts:"s_fwd_pkts", bwd_pkts:"s_bwd_pkts",
+  pkt_len:"s_pkt_len",   flow_bps:"s_flow_bps", flow_pps:"s_flow_pps",
+  fwd_iat:"s_fwd_iat",   bwd_iat:"s_bwd_iat",   syn:"s_syn", rst:"s_rst", win:"s_win"
+};
+const valIds = {
+  flow_dur:"v_flow_dur", fwd_pkts:"v_fwd_pkts", bwd_pkts:"v_bwd_pkts",
+  pkt_len:"v_pkt_len",   flow_bps:"v_flow_bps", flow_pps:"v_flow_pps",
+  fwd_iat:"v_fwd_iat",   bwd_iat:"v_bwd_iat",   syn:"v_syn", rst:"v_rst", win:"v_win"
+};
+
+function loadScenario(key, btn) {
+  const s = scenarios[key];
+  // Remove active from all buttons
+  document.querySelectorAll('.scen-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Set sliders and labels
+  Object.entries(s).forEach(([k, v]) => {
+    document.getElementById(sliderIds[k]).value = v;
+    document.getElementById(valIds[k]).textContent = v;
+  });
+}
+
+/* ── 5. AI CLASSIFIER ── */
+async function runClassify() {
+  const btn = document.getElementById('classifyBtn');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = '⏳ RUNNING PIPELINE...';
+
+  // Collect slider values
+  const vals = {};
+  Object.keys(sliderIds).forEach(k => {
+    vals[k] = document.getElementById(sliderIds[k]).value;
+  });
+
+  // Show loading state
+  const display = document.getElementById('resultDisplay');
+  display.innerHTML = `
+    <div class="result-status">▶ PIPELINE RUNNING...</div>
+    <div class="result-verdict loading">ANALYSING FLOW</div>
+    <div class="pipeline-trace" style="margin-top:auto">
+      <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 1–2: Preprocessing complete · StandardScaler applied</div>
+      <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 3: SMOTE — k=1, 5k/class, 75k balanced training set</div>
+      <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 4: XGBoost — 78 → 35 features (Gain metric)</div>
+      <div class="trace-line"><span class="trace-dot trace-active"></span>Phase 5–7: CNN forward pass (1, 35, 1) → Softmax...</div>
+      <div class="trace-line"><span class="trace-dot trace-wait"></span>Phase 8: Alert generation — awaiting result...</div>
+    </div>`;
+
+  // Build prompt for Claude API
+  const prompt = `You are the trained SMOTE-XGBoost-CNN intrusion detection classifier from the thesis
+"Cloud-Based Hybrid NIDS Using SMOTE-XGBoost-CNN" evaluated on CICIDS-2017 (15 classes).
+
+Network flow feature values (normalised 0–100 scale):
+- Flow Duration:      ${vals.flow_dur}
+- Total Fwd Packets:  ${vals.fwd_pkts}
+- Total Bwd Packets:  ${vals.bwd_pkts}
+- Packet Length Mean: ${vals.pkt_len}
+- Flow Bytes/s:       ${vals.flow_bps}
+- Flow Packets/s:     ${vals.flow_pps}
+- Fwd IAT Mean:       ${vals.fwd_iat}
+- Bwd IAT Mean:       ${vals.bwd_iat}
+- SYN Flag Count:     ${vals.syn}
+- RST Flag Count:     ${vals.rst}
+- Avg Fwd Window:     ${vals.win}
+
+Classify this network flow. Consider:
+- High Packets/s + Low Duration + High SYN = likely DDoS or PortScan
+- High RST + Low Duration = PortScan
+- Balanced Fwd/Bwd + High Window + Long Duration = likely BENIGN
+- Very high Bytes/s + High Fwd Packets + Low IAT = DoS attack
+- Long Duration + Balanced packets + Moderate values = Brute Force / Patator
+
+Respond ONLY with this exact JSON (no markdown, no extra text):
+{
+  "prediction": "<one of: BENIGN, DDoS, DoS Hulk, DoS GoldenEye, DoS Slowhttptest, DoS slowloris, PortScan, FTP-Patator, SSH-Patator, Bot, Web Attack - Brute Force, Web Attack - SQL Injection, Web Attack - XSS, Heartbleed, Infiltration>",
+  "confidence": <integer 60-99>,
+  "is_attack": <true or false>,
+  "severity": "<one of: NONE, LOW, MEDIUM, HIGH, CRITICAL>",
+  "top_indicators": "<2 sentences explaining which specific feature values drove this classification decision>",
+  "top_probs": [
+    {"class": "<most likely class>",       "prob": <integer>},
+    {"class": "<second most likely class>","prob": <integer>},
+    {"class": "<third most likely class>", "prob": <integer>}
+  ]
+}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 700,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    // Extract text from response
+    const rawText = data.content
+      .filter(c => c.type === "text")
+      .map(c => c.text)
+      .join("")
+      .replace(/```json|```/g, "")
+      .trim();
+
+    const r = JSON.parse(rawText);
+
+    // Severity colour mapping
+    const sevColors = {
+      NONE: "#00ff9d", LOW: "#00d4ff",
+      MEDIUM: "#ffd166", HIGH: "#ff6b35", CRITICAL: "#ff4757"
+    };
+    const sevColor = sevColors[r.severity] || "#00d4ff";
+    const verdictClass = r.is_attack ? "attack" : "benign";
+    const statusText  = r.is_attack ? "🚨 INTRUSION DETECTED" : "✅ TRAFFIC CLEARED";
+
+    // Build top probability bars
+    const topHtml = (r.top_probs || []).map(tp => `
+      <div class="prob-row">
+        <div class="prob-class">${tp.class}</div>
+        <div class="prob-bar">
+          <div class="prob-fill" style="width:0%" data-target="${tp.prob}"></div>
+        </div>
+        <div class="prob-pct">${tp.prob}%</div>
+      </div>`).join("");
+
+    display.innerHTML = `
+      <div class="result-status">${statusText}</div>
+      <div class="result-verdict ${verdictClass}">${r.prediction}</div>
+      <div>
+        <span style="font-family:var(--mono);font-size:11px;padding:3px 10px;
+          border:1px solid ${sevColor};color:${sevColor};border-radius:2px;">
+          ${r.severity} SEVERITY
+        </span>
+      </div>
+
+      <div>
+        <div class="conf-label">CONFIDENCE: ${r.confidence}%</div>
+        <div class="conf-track">
+          <div class="conf-fill" id="confFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="top-probs">
+        <div class="top-probs-label">TOP CLASS PROBABILITIES:</div>
+        ${topHtml}
+      </div>
+
+      <div class="pipeline-trace">
+        <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 1–2: Preprocessing ✓</div>
+        <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 3: SMOTE balancing ✓</div>
+        <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 4: XGBoost selection ✓ — 35 features retained</div>
+        <div class="trace-line"><span class="trace-dot trace-done"></span>Phase 5–7: CNN classification ✓ — epoch 21, 93.63% val acc</div>
+        <div class="trace-line"><span class="trace-dot trace-done"></span>${r.top_indicators}</div>
+      </div>`;
+
+    // Animate confidence bar and probability bars after a short delay
+    setTimeout(() => {
+      const cf = document.getElementById('confFill');
+      if (cf) cf.style.width = r.confidence + '%';
+
+      document.querySelectorAll('.prob-fill[data-target]').forEach(el => {
+        el.style.width = el.dataset.target + '%';
+      });
+    }, 120);
+
+  } catch (err) {
+    display.innerHTML = `
+      <div class="result-status">⚠ ERROR</div>
+      <div class="result-verdict" style="color:var(--danger);font-size:18px;">
+        Classification Failed
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--danger);margin-top:8px;">
+        ${err.message}
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:12px;">
+        Make sure you are opening this file through the Claude.ai artifact viewer,
+        which handles the API authentication automatically. The file cannot call
+        the Anthropic API when opened directly from your file system.
+      </div>`;
+  }
+
+  btn.disabled = false;
+  btn.querySelector('span').textContent = '⚡ CLASSIFY TRAFFIC FLOW';
+}
+
+</script>
+</body>
+</html>
