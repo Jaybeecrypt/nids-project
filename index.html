@@ -289,6 +289,69 @@
   }
 
   /* ═══════════════════════════════════════════
+     API KEY BANNER
+  ═══════════════════════════════════════════ */
+  .apikey-banner {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .apikey-banner .key-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+  .apikey-banner input[type=text] {
+    flex: 1;
+    min-width: 220px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .apikey-banner input[type=text]:focus {
+    border-color: var(--accent);
+  }
+  .apikey-banner input[type=text]::placeholder {
+    color: var(--text-dim);
+  }
+  .apikey-save-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 8px 16px;
+    border-radius: 2px;
+    border: 1px solid var(--accent);
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .apikey-save-btn:hover {
+    background: rgba(0,212,255,0.2);
+  }
+  .apikey-status {
+    font-family: var(--mono);
+    font-size: 11px;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  /* ═══════════════════════════════════════════
      SECTION 03 — CLASSIFIER DEMO
   ═══════════════════════════════════════════ */
   .demo-grid {
@@ -816,6 +879,20 @@
        03 — LIVE CLASSIFIER
   ══════════════════════════════════════ -->
   <div class="section-label">03 // Live Traffic Classifier · AI-Powered Demo</div>
+
+  <!-- API Key Banner -->
+  <div class="apikey-banner">
+    <span class="key-label">🔑 ANTHROPIC API KEY:</span>
+    <input type="text" id="apiKeyInput"
+           placeholder="Paste your key here → sk-ant-api03-..."
+           autocomplete="off" spellcheck="false"/>
+    <button class="apikey-save-btn" onclick="saveKey()">SAVE KEY</button>
+    <div class="apikey-status" id="apiKeyStatus" style="color:var(--text-dim);">
+      ℹ️ Get your free API key at <strong style="color:var(--accent)">console.anthropic.com</strong>
+      → API Keys → Create Key. Your key stays in this tab only and is never stored or sent anywhere except Anthropic.
+    </div>
+  </div>
+
   <div class="card">
 
     <!-- Scenario presets -->
@@ -1143,8 +1220,44 @@ function loadScenario(key, btn) {
   });
 }
 
-/* ── 5. AI CLASSIFIER ── */
+/* ── 5. API KEY MANAGEMENT ── */
+let _apiKey = '';
+
+function saveKey() {
+  const input = document.getElementById('apiKeyInput');
+  const status = document.getElementById('apiKeyStatus');
+  const val = input.value.trim();
+
+  if (!val) {
+    status.style.color = 'var(--danger)';
+    status.textContent = '✗ Please paste your API key first.';
+    return;
+  }
+  if (!val.startsWith('sk-ant-')) {
+    status.style.color = 'var(--warn)';
+    status.textContent = '⚠ That does not look like a valid Anthropic key. It should start with sk-ant-...';
+    return;
+  }
+
+  _apiKey = val;
+  // Mask the displayed key for security
+  input.value = val.slice(0, 14) + '••••••••••••••••••••' + val.slice(-4);
+  input.disabled = true;
+  status.style.color = 'var(--accent2)';
+  status.textContent = '✓ API key saved for this session. You can now classify traffic flows.';
+}
+
+/* ── 6. AI CLASSIFIER ── */
 async function runClassify() {
+  // Check API key is set
+  if (!_apiKey) {
+    const status = document.getElementById('apiKeyStatus');
+    status.style.color = 'var(--danger)';
+    status.textContent = '✗ Please paste your API key above and click SAVE KEY before classifying.';
+    document.getElementById('apiKeyInput').focus();
+    return;
+  }
+
   const btn = document.getElementById('classifyBtn');
   btn.disabled = true;
   btn.querySelector('span').textContent = '⏳ RUNNING PIPELINE...';
@@ -1209,7 +1322,12 @@ Respond ONLY with this exact JSON (no markdown, no extra text):
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": _apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 700,
@@ -1294,13 +1412,14 @@ Respond ONLY with this exact JSON (no markdown, no extra text):
       <div class="result-verdict" style="color:var(--danger);font-size:18px;">
         Classification Failed
       </div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--danger);margin-top:8px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--danger);margin-top:8px;">
         ${err.message}
       </div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:12px;">
-        Make sure you are opening this file through the Claude.ai artifact viewer,
-        which handles the API authentication automatically. The file cannot call
-        the Anthropic API when opened directly from your file system.
+        Common fixes: Make sure your API key is correct and starts with sk-ant-...
+        Check that your Anthropic account has credits at console.anthropic.com.
+        If the error says "Failed to fetch", your browser may be blocking the request —
+        try a different browser (Chrome or Edge work best).
       </div>`;
   }
 
@@ -1311,3 +1430,5 @@ Respond ONLY with this exact JSON (no markdown, no extra text):
 </script>
 </body>
 </html>
+
+Fix: add API key input for live classifier
