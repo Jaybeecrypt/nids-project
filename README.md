@@ -4,7 +4,7 @@ Cloud-Based Hybrid NIDS Using SMOTE-XGBoost-CNN — Bowen University Thesis
 Multi-class network intrusion detection on CICIDS-2017 using a three-stage
 pipeline: SMOTE class balancing → XGBoost feature selection → 1D-CNN classification.
 
-**[▶ Live Demo](https://YOUR-USERNAME.github.io/nids-project/)**
+**[▶ Live Demo](https://Jaybeecrypt.github.io/nids-project/)**
 
 ---
 
